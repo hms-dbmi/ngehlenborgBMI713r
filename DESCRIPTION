@@ -1,0 +1,21 @@
+Package: ngehlenborgBMI713r
+Type: Package
+Title: Clustering NEISS data from 2016-17
+Version: 0.1.0
+Author: Authors@R:
+    person("Nils", "Gehlenborg", email = "nils@gehlenborg.com", role = c("aut", "cre"))
+Maintainer: Nils Gehlenborg <nils@gehlenborg.com>
+Description: The NEISS data set contains information about injuries recorded
+    from 2016 to 2017. This package is a wrapper for clustering on the ages by
+    products involved in an injury after filtering for a regular expression in 
+    the injury narrative.
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 3.1)
+RoxygenNote: 6.1.1
+Imports: 
+    dplyr,
+    tidyr,
+    stringr,
+    tibble

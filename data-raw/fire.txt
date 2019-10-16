@@ -1,0 +1,6 @@
+Code	FIRE
+0	NO/?
+1	FD
+2	NO FD
+3	? FD
+4	MV

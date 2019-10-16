@@ -1,0 +1,716 @@
+---
+title: 'Problem Set 6: The Complete Package'
+output:
+    html_document:
+        toc: true
+        toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+if (!require(emojifont)) {
+    install.packages("emojifont")
+    library(emojifont)
+}
+
+library(testthat)
+library(tidyverse)
+```
+
+# Overview
+
+## Learning objectives
+
+After attending lecture and upon completion of this problem set you should be able to do the following: 
+
+Lecture 9:
+
+* Create a R package `r emojifont::emoji("package")`
+
+Lecture 10:
+
+* Login into a compute node on 02.
+* Interact with a UNIX machine via the command line.
+* Use R interactively on O2.
+
+
+
+## Instructions:
+
+You are to complete and upload the Rmd and knitted HTML of this problem set to Canvas and GitHub by *Thursday, October 17, 2019*.
+For more information on Rmd files and knitting, please consult the following tutorial from [RStudio](https://rmarkdown.rstudio.com/articles_intro.html) or the [Introduction to R Markdown](https://canvas.harvard.edu/courses/57521/pages/introduction-to-r-markdown) tutorial the TAs have prepared.
+We will also be grading your use of git and GitHub, so please make sure to commit at appropriate times, push to GitHub at the end, and follow the instructions in Problem 3.
+It is recommended that you have a separate directory within your repository for each problem set.
+
+For the problem set, code should be in the `{r code_#.#.#}` code chunks and text answer should be in the `txt` blocks.
+Below is an example:
+
+```{r code_0.0.9000}
+# CODE 0.0.9000
+df <- cars[1:5, ]
+nrow(df)
+```
+
+```txt
+ANSWER 0.0.9000:
+  There are 5 rows in the new data set `df`
+```
+
+If you have any pressing issues, please post on the appropriate Canvas discussion page. 
+
+
+### Some notes on completing and submitting a Problem Set
+
+* Do not change the R chunk header information (everything within `{r ... }`).
+* Enter answers into a copy of the R Markdown Problem Set assignment.
+* Only include the final code that you want graded; remove personal notes and `View(some_df)`.
+* Do **not** print out long variables (they create mile-long HTML files).
+* Make sure to submit the R Markdown *and* the knitted-HTML.
+* A file file paths should be relative to your .Rproj file for the Problem Set. **No absolute paths - you will lose points.**
+
+
+---
+
+> `r emojifont::emoji("warning")`**NOTICE: Open the provided HTML file for the problem set in a browser window to get started. There will be instructions later on when to switch to the Rmarkdown.**
+
+
+
+
+---
+
+
+# Problem 1 - R You Ready! (25 pts) 
+
+While completing the first two sections of this Problem Set, you will create a R package to help the user cluster the NEISS data set.
+The first problem creates the framework for the package, and the second problem adds in data and a function.
+There will be one function exported from the package, `cluster_neiss()`, which provides the user a few options for subsetting the data and then clusters the age groups.
+
+Some tests are included for some of the steps in package creation.
+These are meant to help you make sure you are on track (and help the TAs while grading the assignment).
+Please do *NOT* change them, but run the code chunks when you think you have completed the step.
+If they fail, you may have done something incorrectly.
+
+
+## 1.1 - Setting up a package framework (2 pts)
+
+**1.1.1** (3 pts)
+Open RStudio and make a new project using a new directory.
+Instead of selecting "New Project," selecting "R Package." 
+In the dialog window, set your package name to "\<first initial\>\<lastname\>BMI713r" (for example, "ngehlenborgBMI713r").
+Lastly, set the location for the directory of your package to the root directory of your git repo for this course.
+Click "Create Project."
+Under the hood, RStudio is using the ['usethis'](https://usethis.r-lib.org/index.html) package to setup the framework for your package.
+
+
+## 1.2 - Inputting standard R package boilerplate (10 pts) 
+
+**1.2.1** (7 pts)
+In the RStudio window that was created for your package, load 'devtools' and 'usethis' in the "Console."
+(You may need to install them if you have not done so already in the course.)
+Also, install 'roxygen2' if you do not have that package.
+Open the "DESCRIPTION" file and write a short, yet descriptive title (where it says "Title") for the package.
+R can be quite picky about how the "Author" and "Maintainer" sections are filled in.
+Use the following template to enter the information for these two sections, but replace the information with your own.
+
+```txt
+Author: Authors@R:
+    person("Nils", "Gehlenborg", email = "nils@gehlenborg.com", role = c("aut", "cre"))
+Maintainer: Nils Gehlenborg <nils@gehlenborg.com>
+```
+
+To continue personalizing the "DESCRIPTION" file, add a brief "Description" about what the package will do.
+
+The final step for this part is to add the following ling below `LayData: true`:
+
+```txt
+Depends: R (>= 3.1)
+```
+
+The following code just tests that the "DESCRIPTION" file has been adjusted as expected.
+For now, copy and paste the code into the RStudio "Console" - it should pass (ie. not throw an error nothing).
+If you get any failures, make sure to address them before moving on.
+
+```{r check_1.2.1}
+# DO NOT CHANGE THE FOLLOWING CODE
+
+library(testthat)
+
+test_that("There exists a title, description, author, and maintianer.", {
+	library(stringr)
+	
+    expect_true(any(list.files() == "DESCRIPTION"))
+    description_file <- readLines("DESCRIPTION")
+    
+    title_line <- unlist(description_file[str_detect(description_file, "Title:")])
+    expect_true(str_detect(title_line, "Title"))
+    title_line <- str_remove(title_line, "Title: ")
+    expect_true(str_length(title_line) > 0)
+    
+    author_line_num <- str_which(description_file, "Author")
+    author_lines <- unlist(description_file)[c(author_line_num, author_line_num + 1)]
+    expect_true(str_detect(author_lines[[1]], "Authors@R"))
+    expect_true(str_detect(author_lines[[2]], "person"))
+    expect_true(str_detect(author_lines[[2]], "role = c\\(\"aut\", \"cre\"\\)"))
+    
+    maintainer_line <- unlist(description_file[str_detect(description_file, "Maintainer:")])
+    expect_true(str_detect(maintainer_line, "Maintainer: [:alpha:]+ [:alpha:]+ <.+>"))
+    
+    description_line <- unlist(description_file[str_detect(description_file, "Description:")])
+    description_line <- str_remove(description_line, "Description: ")
+    expect_true(str_length(description_line) > 0)
+    
+    expect_true(any(str_detect(description_file, "Depends: R \\(\\>= 3.1\\)")))
+})
+```
+
+
+**1.2.2** (4 pts)
+Use a function from 'usethis' to add a README markdown (not the *R* Markdown, just a normal markdown).
+In the template that is created, finish the sentence for describing the package ("The goal of ngehlenborgBMI713r is to ...").
+Also, we will not be published to CRAN, so change the installation instructions from `install.packages("")` to:
+
+```r
+devtools::install_github("<GitHub username>/<GitHub repo name>",
+                         subdir = "ngehlenborgBMI713r")
+```
+
+
+The following code looks for a few indicators that you have done this correctly.
+
+```{r check_1.2.2}
+# DO NOT CHANGE THE FOLLOWING CODE
+test_that("A README.md file exists and was altered as directed.", {
+	library(stringr)
+	
+    readme_file <- list.files(".", pattern = "README.md")
+    expect_length(readme_file, 1)
+    
+    readme_lines <- readLines(readme_file)
+    expect_gt(length(readme_lines), 5)
+    
+    expect_false(any(str_detect(readme_lines, "install\\.packages")))
+    expect_true(any(str_detect(readme_lines, "devtools::install_github")))
+    expect_true(any(str_detect(readme_lines, "subdir")))
+})
+```
+
+
+
+**1.2.3** (2 pts)
+Use a 'usethis' function to add the GPL-3 license to your package.
+
+The following code looks for the license file and that the information has been added to "DESCRIPTION" (which should be automatically done by the 'usethis' function).
+
+```{r check_1.2.3}
+# DO NOT CHANGE THE FOLLOWING CODE
+test_that("There is a GPL3 license.", {
+	library(stringr)
+	
+    all_files <- unlist(list.files("."))
+    expect_true(
+        any(str_detect(all_files, "LICENSE"))
+    )
+    license_file <- all_files[str_detect(all_files, "LICENSE")]
+    line_one_of_license <- readLines(license_file, n = 1)
+    expect_equal(unlist(line_one_of_license), "GNU General Public License")
+    
+    description_file <- readLines("DESCRIPTION")
+    license_line <- description_file[str_detect(description_file, "License:")]
+    expect_equal(license_line, "License: GPL-3")
+})
+```
+
+
+# 1.3 - Building the package (8 pts)
+
+**1.3.1** (3 pts)
+We want to keep the problem set R Markdown and knitted HTML files in the same directory as the package, but we do not want them included in the building process.
+Therefore, use `usethis::use_build_ignore("6_ProblemSet_student.Rmd")` and `usethis::use_build_ignore("6_ProblemSet_student.html")` to add both files to the ".Rbuildignore" file.
+Now move your problem set R Markdown file to the same directory as your R project and you can use it for the rest of the problem set.
+
+The following code checks that the ".Rbuildignore" has been modified appropriately.
+
+```{r check_1.3.1}
+# DO NOT CHANGE THE FOLLOWING CODE
+test_that("The .Rbuildignore has the proper files listed.", {
+	library(stringr)
+    bldignr <- unlist(readLines(".Rbuildignore"))
+    expect_true(sum(str_detect(bldignr, "6_ProblemSet")) == 2)
+})
+```
+
+
+**1.3.2** (6 pts)
+We can finally build the package.
+Before doing so, let's clean everything up and delete the files "R/hello.R" and "man/hello.Rd".
+Also, we will delete the "NAMESPACE" file.
+If we don't do this, then 'roxygen2' will think that it was made by another file-management system and not keep it up-to-date.
+Deleting this file now will cause 'roxygen2' to remake it when we build the documentation, and then it will continue to update the file as we continue the development of the package.
+
+Use "Control" + "Shift" + "D" to build the documentation.
+The use "Control" + "Shift" + "E" to "check" the package.
+Alternatively, you can click the "Check" button on the Build pane in RStudio or, in the menu, choose "Build/Check Package."
+This will take a few moments, but you should end up with no errors, warnings, or notes.
+
+(Once you have successfully built the package, commit all of your changes to your git repository. Now, if you really screw something up, you can return to this point and try again.)
+
+
+
+
+---
+
+
+# Problem 2 - Adding data and functions to a package (50 pts)
+
+In this section, we will bundle the NEISS data into the package and add our function.
+
+## 2.1 - Building the NEISS data set (19 pts)
+
+Our functions will be using the NEISS data that we have been using throughout this course.
+Though it is fun, copying and pasting code over and over is a bad practice (it wastes time, can cause conflicts, requires more maintaince, etc.).
+Therefore, we will include the NEISS data right into the package.
+
+**2.1.1** (6 pts)
+Use the `usethis::use_data_raw()` function to create a directory called "data-raw", a file within the new directory called "DATASET.R", and add the new directory to the ".Rbuildignore" file.
+Copy all of the separate NEISS data files (the same ones we have been using this entire course) into "data-raw".
+Then copy the code below into "DATASET.R", replacing any text currently in the file by default.
+Add a few comments in your "DATASET.R" file to help future-you know what is going on in the code.
+
+```r
+library(tidyverse)
+
+agelttwo_to_year <- function(neiss_date) {
+    (as.numeric(neiss_date) - 200) / 12
+}
+
+neiss16 <- read_tsv(
+    "data-raw/neiss2016.tsv",
+    col_types = cols()
+) %>%
+    mutate(Year = "2016")
+neiss17 <- read_tsv(
+    "data-raw/neiss2017.tsv",
+    col_types = cols()
+) %>%
+    mutate(Year = "2017")
+products <- read_tsv(
+    "data-raw/products.txt",
+    col_types = cols()
+)
+diagnoses <- read_tsv(
+    "data-raw/diagnoses.txt",
+    col_types = cols()
+)
+bdypt <- read_tsv(
+    "data-raw/bdypt.txt",
+    col_types = cols()
+)
+neiss1617 <- bind_rows(neiss16, neiss17)
+neiss1617 <- left_join(neiss1617, products, by = c("Product_1" = "Code")) %>%
+    left_join(diagnoses, by = c("Diagnosis" = "Code")) %>%
+    left_join(bdypt, by = c("Body_Part" = "Code"))
+
+
+neiss1617 <- neiss1617 %>%
+    mutate(
+        Age = ifelse(Age > 150, agelttwo_to_year(Age), Age),
+        age_group = case_when(
+             Age < 2  ~ "infant",
+             Age < 11 ~ "children",
+             Age < 20 ~ "adolescent",
+             Age < 30 ~ "20-29",
+             Age < 40 ~ "30-39",
+             Age < 50 ~ "40-49",
+             Age < 60 ~ "50-59",
+             Age < 70 ~ "60-69",
+             Age < 80 ~ "70-79",
+             Age < 90 ~ "80-89",
+            Age < 100 ~ "90-99",
+                 TRUE ~ "100+"
+        )
+    )
+```
+
+**2.1.2** (4 pts)
+Finally, we want to save the `neiss` data frame for future use in the package.
+This is accomplished using the `usethis::use_data()` function.
+Add this function at the end of the "DATASET.R" script to save `neiss1617` to the "data" directory (hint: `?usethis::use_data`)
+Copy this function to the code chunk below (it will not be run during knitting because of the `eval=FALSE` in the header, we just want to make sure you used the function correctly).
+
+```{r code_2.1.2, eval=FALSE}
+# Code 2.1.1 (not run during knitting)
+usethis::use_data(neiss1617)
+```
+
+Copy the message that is output after running the `use_data()` function to save `neiss1617` below.
+
+```txt
+Answer 2.1.2
+usethis::use_data(neiss1617)
+#> ✔ Creating 'data/'
+#> ✔ Saving 'neiss1617' to 'data/neiss1617.rda'
+```
+
+**2.1.3** (5 pts)
+If you were to build your package now, you would get the following warning.
+
+```txt
+❯ checking for missing documentation entries ... WARNING  
+  Undocumented code objects:  
+    ‘neiss1617’  
+  Undocumented data sets:  
+    ‘neiss1617’  
+  All user-level objects in a package should have documentation entries.  
+  See chapter ‘Writing R documentation files’ in the ‘Writing R  
+  Extensions’ manual.
+```
+
+This is saying that even the data that a package imports should be documented.
+
+Make a new file in the "R/" directory called "neiss1617.R" and add a title and (brief) description.
+For an example of what this should look like, see the section of *R Packages*: [Chapter 12. External data - Documenting datasets](https://r-pkgs.org/data.html#documenting-data).
+Also, you can see examples "in the wild" from open source packages available on GitHub; here is a link for the documnetation of [`neiss::injuries`](https://github.com/hadley/neiss/blob/master/R/injuries.R) that we have used before.
+
+Copy your documentation of `neiss1617` below.
+
+```txt
+Answer 2.1.3
+#' The National Electronic Injury Surveillance System data from 2016-17
+#'
+#' A data frame with all of the NEISS data combined. This includes the human-
+#' readable descriptions of products, diagnoses, and bodyparts. Additionally,
+#' the ages of infants has been adjusted into years instead of 200 added to the
+#' number of months.
+"neiss1617"
+```
+
+**2.1.4** (4 pts)
+Build your documentation ("Control" + "Shift" + "D") and your package ("Control" + "Shift" + "E").
+Address any "Errors" or "Warnings" before continuing.
+Are there any "Notes" reported from the check?
+If so, copy them down below followed by an explanation of what caused them.
+
+```txt
+Answer 2.1.4
+── R CMD check results ─────────────────────────── ngehlenborgBMI713r 0.1.0 ────
+Duration: 1m 41s
+
+❯ checking installed package size ... NOTE
+    installed size is 34.2Mb
+    sub-directories of 1Mb or more:
+      data  34.1Mb
+
+0 errors ✔ | 0 warnings ✔ | 1 note ✖
+
+---
+
+The note is about the total size of the package. This is caused by the large
+`neiss1617` data object.
+```
+
+
+## 2.2 - First function (31 pts)
+
+The first function we are going to add will allow the user to filter the "Narrative_1" column with a regular expression and then clusters the age groups by the number of injuries per product (using the "Product" column).
+The function will also allow the user to select different distance and clustering methods (passed to `dist()` and `hclust()`, respecitvely.)
+
+**2.2.1** (4 pts)
+Use `usethis::use_r()` to declare a new function for your package called `cluster_neiss()`.
+What is the command you used (copy it below; it will not be run because `eval=FALSE`.)
+
+```{r code_2.2.1, eval=FALSE}
+# Code 2.2.1
+use_r("cluster_neiss")
+```
+
+**2.2.2** (7 pts)
+Below is the code for the function.
+Copy and paste it into the new file created by `use_r()`.
+Your job is to document the function. 
+Include a title, description, a description for each parameter, and a description for the object returned at the end.
+Also, don't forget to `@export` the function.
+For help, see [*R Packages*: Object documentation](https://r-pkgs.org/man.html).
+
+```r
+cluster_neiss <- function(narrative_regex = ".*", dist_method = "euclidean", hclust_method = "complete") {
+
+    neiss1617_filtered <- neiss1617 %>%
+        dplyr::filter(
+            stringr::str_detect(stringr::str_to_lower(Narrative_1), narrative_regex)
+        ) %>%
+        dplyr::group_by(age_group, Product) %>%
+        dplyr::count(name = "num_injuries") %>%
+        tidyr::spread(Product, num_injuries, fill = 0) %>%
+        tibble::column_to_rownames("age_group")
+
+    d <- stats::dist(neiss1617_filtered, method = dist_method)
+    hc <- stats::hclust(d, method = hclust_method)
+
+    return(hc)
+}
+
+# include the following code, too
+utils::globalVariables(
+    c("Product", "Narrative_1", "age_group", "neiss1617", "num_injuries"),
+    add = TRUE
+)
+```
+
+(The use of `utils::globalVariables(...)` is to get around the strange behaviour of the Tidyverse that isn't very relevant to the course.
+If we didn't include it, we would get another "Note" during the building process, but not an error.
+If you are interested in knowing why we need this, ask a TA before or after class.)
+
+Copy your documentation for `cluster_neiss()` below.
+
+```txt
+Answer 2.2.2
+#' Cluster \code{neiss1617}
+#'
+#' The user can cluster the age groups in \code{neiss1617} after filtering the
+#' \code{Narrative_1} using a regular expression.
+#'
+#' @param narrative_regex A regular expression for filtering \code{neiss1617$Narrative_1}.
+#' @param dist_method The method to use for calculating distance.
+#' @param hclust_method The method to use for hierarhcical clustering.
+#'
+#' @return A \code{hclust} object.
+#'
+#' @export cluster_neiss
+```
+
+**2.2.3** (3 pts)
+Once you have done that, you need to indicate that your package now *depends* on the packages that were used in `cluster_neiss()`.
+When making an R package, you need to explcitly call the namespace for any function you use from another package (that is not base R).
+For example, if you want to use `mutate()` from 'dplyr', then you have to type `dplyr::mutate()`. 
+We then say that your package *depends on* 'dplyr'.
+To make sure that this is tracked, it needs to be added to the "Imports" section of your package's "DESCRIPTION".
+This can be done by hand, or, more simply, using the `usethis::use_package("packageName")` function.
+Use this function to add the packages used in `cluster_neiss()` to "Imports".
+
+(It is generally inadvisable to depend on the 'tidyverse' package since it is a collection of packages.
+Therefore, you will want to depend on the specific packages that you are using (such as 'dplyr' or 'stringr').)
+
+You may notice that I also used the `%>%` function, but do not explcitly state its namespace ('dplyr', in this case) when it is used in `cluster_neiss()`.
+Therefore, add the following tag just above `@export`: `@importFrom dplyr %>%`.
+
+
+**2.2.4** (5 pts)
+Build the documentation and the package.
+It may take some troubleshooting to eventually build the package without any errors or warnings (you can ignore any notes for now).
+Keep working at it until you solve all of those bugs.
+
+
+**2.2.5** (6 pts)
+Once you are successful, install your package and restart R using "Control" + "Shift" + "B", clicking the "Install and Restart" button in the "Build" pane of RStudio, or clicking "Build/Install and Restart."
+
+Once everything has been reset, try attaching your package (`library(ngehlenborgBMI713r)`) and running `cluster_neiss()` with all default parameters in the code chunk below.
+What is the class of the object that is returned (answer in the text box following the code chunk)?
+Plot the returned object.
+
+```{r code_2.2.5}
+# Code 2.2.5
+library(ngehlenborgBMI713r)
+neiss_cls <- cluster_neiss()
+class(neiss_cls)
+plot(neiss_cls)
+```
+
+```txt
+# Answer 2.2.5
+The returned object is of classs "hclust".
+```
+
+**2.2.6** (6 pts)
+Run `cluster_neiss()` with all *non-default* parameters and plot the result.
+Use "walk" as the regular expression.
+State two differences between this plot and the one with all default parameters.
+
+```{r code_2.2.6}
+# Code 2.2.6
+walk_cls <- cluster_neiss("walk", "minkowski", "average")
+plot(walk_cls)
+```
+
+```txt
+Asnwer 2.2.6
+
+1. one difference
+
+2. another difference
+```
+
+
+
+
+---
+
+
+# Problem 3 - A fresh breath of O2 (20 pts)
+
+## 3.1 - Logging on (6 pts)
+
+We will begin by covering the basics of using O2.
+
+**3.1.1** (3 pts)
+Log on to O2.
+What is the command that shows your current working directory in bash?
+What is the default working directory when you log in?
+Is the directory returned from the command a relative or absolute path?
+What is the type of node you are on?
+
+```txt
+Answer 3.1.1
+  bash command: `pwd`
+  working dir: /home/jc604
+  type of path: absolute
+  node type: login
+```
+
+**3.1.2** (3 pts)
+How can you see how much space you have available on O2 and how much is being used?
+
+```txt
+Answer 3.1.2
+  bash command: quota
+  total amount of space available: 100G
+  total space used: X
+```
+
+
+## 3.2 - Interactive use (14 pts)
+
+We will now test your ability to initiate and do a few tasks on an interactive session on O2.
+
+**3.2.1** (5 pts)
+Set up an interactive session with 4 GB of memory and 1 core.
+You should need no more than 1 hour of time.
+What command did you use to request an interactive session?
+
+```bash
+# Code 3.2.1
+srun --pty -p interactive --mem 4G -c 1 -t 0-2:00 /bin/bash
+```
+
+**3.2.2** (2 pts)
+In your home directory, make a new directory called "bmi713_data" and enter it.
+Paste your commands (2) below.
+
+```bash
+# Code 3.2.2
+mkdir bmi713_data
+cd bmi713_data/
+```
+
+**3.2.3** (3 pts)
+Download and unarchive the COAD/READ sequencing data collected by TCGA available on [cBioPortal](https://www.cbioportal.org) using the following commands.
+
+```bash
+curl http://download.cbioportal.org/coadread_tcga_pan_can_atlas_2018.tar.gz -O
+tar -xzf coadread_tcga_pan_can_atlas_2018.tar.gz
+```
+
+What is the command to list the files in your working directory?
+Which two arguments do you need to pass to the same command to see the size of each file in a human-readable format.
+
+(Hint: use `man <name of the function>`, without the arrows, to see the manual for a function in bash.)
+
+```bash
+# Code 3.2.3
+# to list the files
+ls
+# to list them with the size in a human-readable format
+ls -lh
+```
+
+**3.2.4** (4 pts)
+There is a bash script located at "/n/scratch2/bmi713_logs/some_bash_script.sh".
+Run it from within your "bmi713_data" directory.
+What is the command to run the script?
+
+```bash
+# Code 
+bash /n/scratch2/bmi713_logs/some_bash_script.sh
+```
+
+If the program runs successfully, you should be able to see the output using the following command:
+
+```bash
+less -S /n/scratch2/bmi713_logs/logs/${USER}_pset6.log
+```
+
+The file should look something like the following:
+
+```txt
+User name:
+
+working dir: /home/jc604/bmi713_data
+
+compute node: compute-a-16-168
+
+number of nodes: 1
+
+total 1465784
+drwxrwsr-x  3 jc604 jc604       986 Oct 16 07:20 .
+drwxr-sr-x 31 jc604 jc604      1361 Oct 16 07:13 ..
+drwxr-sr-x  2 jc604 jc604       311 Apr 17 10:49 case_lists
+-rw-rw-r--  1 jc604 jc604 221431787 Oct 16 07:20 coadread_tcga_pan_can_atlas_2018.tar.gz
+-rw-r--r--  1 jc604 jc604    183549 Apr  9  2019 data_clinical_patient.txt
+-rw-r--r--  1 jc604 jc604    284637 Feb 19  2019 data_clinical_sample.txt
+-rwxr-xr-x  1 jc604 jc604      7967 Aug  5 11:43 data_clinical_supp_hypoxia.txt
+-rw-r--r--  1 jc604 jc604   4005111 Mar  7  2019 data_cna_hg19.seg
+-rw-r--r--  1 jc604 jc604  32667285 Feb 19  2019 data_CNA.txt
+-rw-r--r--  1 jc604 jc604     49860 Feb 19  2019 data_fusions.txt
+-rw-r--r--  1 jc604 jc604  92057704 Feb 19  2019 data_log2CNA.txt
+-rw-r--r--  1 jc604 jc604 353180042 Jul 23 14:54 data_mutations_extended.txt
+-rw-r--r--  1 jc604 jc604 353346886 Jul 23 14:55 data_mutations_mskcc.txt
+-rw-r--r--  1 jc604 jc604 100912558 Feb 19  2019 data_RNA_Seq_v2_expression_median.txt
+-rw-r--r--  1 jc604 jc604  87437999 Feb 19  2019 data_RNA_Seq_v2_mRNA_median_Zscores.txt
+-rw-r--r--  1 jc604 jc604       446 Feb 19  2019 LICENSE
+-rw-r--r--  1 jc604 jc604       162 Feb 19  2019 meta_clinical_patient.txt
+-rw-r--r--  1 jc604 jc604       159 Feb 19  2019 meta_clinical_sample.txt
+-rw-r--r--  1 jc604 jc604       359 Mar  7  2019 meta_cna_hg19_seg.txt
+-rw-r--r--  1 jc604 jc604       448 Feb 19  2019 meta_CNA.txt
+-rw-r--r--  1 jc604 jc604       244 Feb 19  2019 meta_fusions.txt
+-rw-r--r--  1 jc604 jc604       334 Feb 19  2019 meta_log2CNA.txt
+-rw-r--r--  1 jc604 jc604       343 Apr  9  2019 meta_mutations_extended.txt
+-rw-r--r--  1 jc604 jc604       409 Feb 19  2019 meta_RNA_Seq_v2_expression_median.txt
+-rw-r--r--  1 jc604 jc604       439 Feb 19  2019 meta_RNA_Seq_v2_mRNA_median_Zscores.txt
+-rw-r--r--  1 jc604 jc604       579 Sep  3 15:57 meta_study.txt
+
+
+       JobID  Partition          State               NodeList                Start      Timelimit        Elapsed    CPUTime   TotalCPU                 AllocTRES     MaxRSS
+------------ ---------- -------------- ---------------------- -------------------- -------------- -------------- ---------- ---------- ------------------------- ----------
+53147563     interacti+        RUNNING       compute-e-16-235  2019-10-16T06:33:33       12:00:00       00:47:56   03:11:44   00:00:00 billing=6,cpu=4,mem=40G,+
+53151887     interacti+        RUNNING       compute-a-16-168  2019-10-16T07:12:54       02:00:00       00:08:35   00:08:35   00:00:00 billing=1,cpu=1,mem=4G,n+
+
+```
+
+To exit from `less`, tap the "q" key on your keyboard.
+
+
+
+
+---
+
+
+# Problem 4 - Submitting through GitHub (5 pts) 
+
+After you have completed your assignment and knitted the document for the last time, add and commit all of your files (especially the R Markdown for your submission and the knitted HTML) to your git repository and push to GitHub.
+Each commit has a unique identifier (that is how they are tracked simultaneously on your computer and online).
+We want the unique identifier of the commit with your final submission, but we cannot include it here because that would be a change to the file that you would then have to commit...
+Instead, please create an Issue titled "PSet 5 submission commit ID" and in the text of the Issue, inlcude the ID of your final commit (either the abbreviated or full ID, is fine) in the body of the Issue.
+
+
+
+
+---
+
+
+# Submission Reminders
+
+* Do not change the R chunk header information (everything within `{r ... }`).
+* Enter answers into a copy of the R Markdown Problem Set assignment.
+* Only include the final code that you want graded; remove personal notes and `View(some_df)`.
+* Do **not** print out long variables (they create mile-long HTML files).
+* Make sure to submit the R Markdown *and* the knitted-HTML.
+* A file file paths should be relative to your .Rproj file for the Problem Set. **No absolute paths - you will lose points.**

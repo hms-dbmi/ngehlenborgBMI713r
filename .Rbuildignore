@@ -1,0 +1,6 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^6_ProblemSet_student\.Rmd$
+^6_ProblemSet_student\.html$
+^data-raw$
